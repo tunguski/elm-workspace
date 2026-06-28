@@ -33,20 +33,41 @@ body {
 }
 
 .ws-hero {
-    padding: 40px 0 18px;
+    text-align: center;
+    padding: 46px 16px 30px;
+    background: radial-gradient(720px 300px at 50% -40%, rgba(91, 110, 245, 0.16), transparent 70%);
+}
+
+.ws-hero-inner {
+    max-width: 720px;
+    margin: 0 auto;
+}
+
+.ws-eyebrow {
+    display: inline-block;
+    font-size: 0.72rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ws-accent);
+    border: 1px solid var(--ws-border);
+    background: var(--ws-panel);
+    border-radius: 999px;
+    padding: 0.3rem 0.8rem;
+    margin-bottom: 1rem;
 }
 
 .ws-hero h1 {
-    margin: 0 0 8px;
-    font-size: 2rem;
+    margin: 0 0 0.5rem;
+    font-size: clamp(2rem, 5vw, 3rem);
     letter-spacing: -0.02em;
-    color: var(--ws-accent);
+    color: var(--ws-ink);
 }
 
 .ws-lead {
-    margin: 0;
+    margin: 0 auto;
+    max-width: 600px;
     color: var(--ws-muted);
-    max-width: 640px;
+    font-size: 1.05rem;
 }
 
 .ws-foot {

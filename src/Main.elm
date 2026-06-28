@@ -69,7 +69,8 @@ viewNote : Workspace.EditorEnv -> NoteDoc -> Html NoteMsg
 viewNote env doc =
     div [ HA.class "note" ]
         [ if env.commentsVisible && env.commentCount "note" > 0 then
-            span [ HA.class "note-marker" ] [ text ("💬 " ++ String.fromInt (env.commentCount "note")) ]
+            span [ HA.class "note-marker" ]
+                [ Html.i [ HA.class "bi bi-chat-dots" ] [], text (" " ++ String.fromInt (env.commentCount "note")) ]
 
           else
             text ""
@@ -176,10 +177,13 @@ view : Model -> Html Msg
 view model =
     div [ HA.class "ws-page" ]
         [ header [ HA.class "ws-hero" ]
-            [ h1 [] [ text "elm-workspace" ]
-            , p [ HA.class "ws-lead" ]
-                [ text "A reusable workspace around any document — here, plain-text notes stored in your browser. "
-                , text "The same component powers elm-notebook and elm-svg."
+            [ div [ HA.class "ws-hero-inner" ]
+                [ span [ HA.class "ws-eyebrow" ] [ text "elm · reusable workspace" ]
+                , h1 [] [ text "elm-workspace" ]
+                , p [ HA.class "ws-lead" ]
+                    [ text "A reusable workspace around any document — here, plain-text notes stored in your browser. "
+                    , text "The same component powers elm-notebook and elm-svg."
+                    ]
                 ]
             ]
         , Html.map WsMsg (Workspace.view config backend ctx model.ws)
