@@ -1,34 +1,55 @@
 module Main exposing (main)
 
-{-| The elm-workspace demo: a workspace that manages plain-text **notes**, stored in the browser.
+{-| The elm-workspace demo site.
 
-The point of the demo is that the document type is *trivial* — a note is just `{ text }` — yet it
-gets the whole workspace for free: create / name / open / search / copy / delete, sharing &
-permissions, threaded comments, URL import and CSV / JSON export. The same `Workspace` component
-drives elm-notebook (a notebook document) and elm-svg (a chart-spec document); only the few hooks
-in [`config`](#config) below differ.
+Like elm-notebook and elm-svg, this is a [`Workspace.Site`](Workspace-Site): a landing page plus the
+live workspace under a navbar, with hash routing. The managed document is a *trivial* plain-text
+**note** (`{ text }`) — the point of the demo is that even so it gets the whole workspace for free:
+create / name / open / search / copy / delete, sharing & permissions, threaded comments, URL import
+and CSV / JSON export. The same `Workspace` component drives elm-notebook, elm-svg and elm-spreadsheet;
+only the few hooks in [`config`](#config) differ.
+
+The landing presents a **disabled** (non-interactive) preview of the workspace alongside the Elm
+needed to embed it, and a link to the live workspace.
 
 -}
 
-import Browser
-import Html exposing (Html, a, div, footer, h1, header, img, p, span, text, textarea)
+import Html exposing (Html, div, p, pre, section, text)
 import Html.Attributes as HA
-import Html.Events as HE
+import Html.Events
 import Json.Decode as D
 import Json.Encode as E
 import Workspace
 import Workspace.Backend exposing (Backend, Context)
 import Workspace.Browser
-import Workspace.Types exposing (Table)
+import Workspace.Site
+import Workspace.Types as Types exposing (Table)
 
 
-main : Program () Model Msg
+main : Program () (Workspace.Site.Model NoteDoc Preview) (Workspace.Site.Msg NoteMsg PreviewMsg)
 main =
-    Browser.element
-        { init = init
-        , update = update
-        , view = view
-        , subscriptions = subscriptions
+    Workspace.Site.program
+        { title = "elm-workspace"
+        , namespace = "elm-workspace-demo"
+        , logo = "logo.svg"
+        , eyebrow = "elm · reusable workspace"
+        , lead =
+            [ text "A reusable workspace around any document — create, name, share, comment on, import "
+            , text "into and export many documents, over a storage backend you choose. It powers "
+            , text "elm-notebook, elm-svg and elm-spreadsheet. Open the "
+            , Workspace.Site.workspaceLink [ text "live workspace" ]
+            , text " (here managing plain-text notes), or see how to embed it below."
+            ]
+        , repoUrl = "https://github.com/tunguski/elm-workspace"
+        , workspace = config
+        , context = ctx
+        , landing =
+            { init = preview
+            , update = \_ m -> ( m, Cmd.none )
+            , subscriptions = \_ -> Sub.none
+            , view = landingView
+            , copyToWorkspace = \_ _ -> Nothing
+            }
         }
 
 
@@ -69,17 +90,17 @@ viewNote : Workspace.EditorEnv -> NoteDoc -> Html NoteMsg
 viewNote env doc =
     div [ HA.class "note" ]
         [ if env.commentsVisible && env.commentCount "note" > 0 then
-            span [ HA.class "note-marker" ]
+            Html.span [ HA.class "note-marker" ]
                 [ Html.i [ HA.class "bi bi-chat-dots" ] [], text (" " ++ String.fromInt (env.commentCount "note")) ]
 
           else
             text ""
-        , textarea
+        , Html.textarea
             [ HA.class "note-text"
             , HA.attribute "rows" "16"
             , HA.placeholder "Write your note here…"
             , HA.value doc.text
-            , HE.onInput SetText
+            , Html.Events.onInput SetText
             ]
             []
         ]
@@ -137,62 +158,101 @@ ctx =
     { user = "me", groups = [] }
 
 
-backend : Backend (Workspace.Msg NoteMsg)
-backend =
-    Workspace.Browser.backend "elm-workspace-demo"
+
+-- LANDING: a disabled workspace preview + an embedding snippet --------------------
 
 
-type alias Model =
-    { ws : Workspace.Model NoteDoc }
+{-| The landing's state is a seeded, non-interactive workspace model used purely for the preview. -}
+type alias Preview =
+    Workspace.Model NoteDoc
 
 
-type Msg
-    = WsMsg (Workspace.Msg NoteMsg)
+type PreviewMsg
+    = Ignore
 
 
-init : () -> ( Model, Cmd Msg )
-init _ =
+previewBackend : Backend (Workspace.Msg NoteMsg)
+previewBackend =
+    Workspace.Browser.backend "elm-workspace-preview"
+
+
+{-| A workspace model seeded with a few sample documents, so the disabled preview has content. -}
+preview : Preview
+preview =
     let
-        ( ws, cmd ) =
-            Workspace.init backend
+        ( model, _ ) =
+            Workspace.init previewBackend
     in
-    ( { ws = ws }, Cmd.map WsMsg cmd )
+    { model
+        | metas =
+            [ Types.newMeta "demo-1" "Quarterly review" "note" "me"
+            , Types.newMeta "demo-2" "Trip budget" "note" "me"
+            , Types.newMeta "demo-3" "Reading list" "note" "me"
+            ]
+    }
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
-update (WsMsg m) model =
-    let
-        ( ws, cmd ) =
-            Workspace.update config backend ctx m model.ws
-    in
-    ( { ws = ws }, Cmd.map WsMsg cmd )
-
-
-subscriptions : Model -> Sub Msg
-subscriptions model =
-    Sub.map WsMsg (Workspace.subscriptions model.ws)
-
-
-view : Model -> Html Msg
-view model =
-    div [ HA.class "ws-page" ]
-        [ header [ HA.class "ws-hero" ]
-            [ div [ HA.class "ws-hero-inner" ]
-                [ img [ HA.class "ws-hero-logo", HA.src "logo.svg", HA.alt "" ] []
-                , span [ HA.class "ws-eyebrow" ] [ text "elm · reusable workspace" ]
-                , h1 [] [ text "elm-workspace" ]
-                , p [ HA.class "ws-lead" ]
-                    [ text "A reusable workspace around any document — here, plain-text notes stored in your browser. "
-                    , text "The same component powers elm-notebook and elm-svg."
-                    ]
+landingView : Preview -> Html PreviewMsg
+landingView model =
+    div [ HA.class "wsite-app" ]
+        [ section [ HA.class "wsite-section" ]
+            [ Html.h2 [] [ text "The workspace, embedded" ]
+            , p []
+                [ text "Below is the actual workspace component (disabled here) — the same UI you get "
+                , text "live. It manages your documents with search, sharing, comments, import and export."
+                ]
+            , div [ HA.class "wsite-preview" ]
+                [ Html.span [ HA.class "wsite-preview-tag" ] [ text "preview" ]
+                , div [ HA.class "wsite-preview-frame" ]
+                    [ Html.map (always Ignore) (Workspace.view config previewBackend ctx model) ]
                 ]
             ]
-        , Html.map WsMsg (Workspace.view config backend ctx model.ws)
-        , footer [ HA.class "ws-foot" ]
-            [ a [ HA.href "tests.html" ] [ text "Test report" ]
-            , text " · "
-            , a [ HA.href "https://github.com/tunguski/elm-workspace" ] [ text "GitHub" ]
-            , text " · "
-            , a [ HA.href "https://tunguski.github.io/" ] [ text "More projects" ]
+        , section [ HA.class "wsite-section" ]
+            [ Html.h2 [] [ text "Use it in your Elm app" ]
+            , p []
+                [ text "Supply a document "
+                , Html.code [] [ text "Config" ]
+                , text " (a JSON codec plus editor hooks) and a "
+                , Html.code [] [ text "Backend" ]
+                , text ", then hand the whole site to "
+                , Html.code [] [ text "Workspace.Site.program" ]
+                , text "."
+                ]
+            , pre [ HA.class "wsite-code" ] [ text embedSnippet ]
             ]
         ]
+
+
+embedSnippet : String
+embedSnippet =
+    """import Workspace
+import Workspace.Site
+
+-- 1. Describe your document: how to (de)serialise it and how to edit it.
+config : Workspace.Config Note NoteMsg
+config =
+    { codec = { encode = encodeNote, decoder = noteDecoder }
+    , empty = { text = "" }
+    , kind = "note"
+    , activate = identity
+    , viewDoc = viewNote          -- EditorEnv -> Note -> Html NoteMsg
+    , updateDoc = updateNote      -- NoteMsg -> Note -> Note
+    , elementsOf = \\_ -> [ ( "note", "The note" ) ]
+    , toTable = noteTable         -- export to CSV / JSON
+    , onImport = Just noteImport  -- import a URL / database table
+    }
+
+-- 2. Hand it to the site template: landing + workspace + routing, for free.
+main =
+    Workspace.Site.program
+        { title = "my-notes"
+        , namespace = "my-notes"
+        , logo = "logo.svg"
+        , eyebrow = "notes"
+        , lead = [ Html.text "Take notes. Open the ", Workspace.Site.workspaceLink [ Html.text "Workspace" ], Html.text "." ]
+        , repoUrl = "https://github.com/me/my-notes"
+        , workspace = config
+        , context = { user = "me", groups = [] }
+        , landing = landing
+        }
+"""
