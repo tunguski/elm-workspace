@@ -11,7 +11,7 @@ in [`config`](#config) below differ.
 -}
 
 import Browser
-import Html exposing (Html, a, div, footer, h1, header, p, span, text, textarea)
+import Html exposing (Html, a, div, footer, h1, header, img, p, span, text, textarea)
 import Html.Attributes as HA
 import Html.Events as HE
 import Json.Decode as D
@@ -178,7 +178,8 @@ view model =
     div [ HA.class "ws-page" ]
         [ header [ HA.class "ws-hero" ]
             [ div [ HA.class "ws-hero-inner" ]
-                [ span [ HA.class "ws-eyebrow" ] [ text "elm · reusable workspace" ]
+                [ img [ HA.class "ws-hero-logo", HA.src "logo.svg", HA.alt "" ] []
+                , span [ HA.class "ws-eyebrow" ] [ text "elm · reusable workspace" ]
                 , h1 [] [ text "elm-workspace" ]
                 , p [ HA.class "ws-lead" ]
                     [ text "A reusable workspace around any document — here, plain-text notes stored in your browser. "

@@ -546,3 +546,7 @@ body {
     outline: none;
     border-color: var(--ws-accent);
 }
+
+/* demo hero logo */
+.ws-hero-logo { width: 52px; height: 52px; display: block; margin: 0 auto 12px; }
+.ws-row-actions .bi, .ws-btn .bi { font-size: 1em; line-height: 1; }
