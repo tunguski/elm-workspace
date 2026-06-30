@@ -22,6 +22,7 @@ import Json.Encode as E
 import Workspace
 import Workspace.Backend exposing (Backend, Context)
 import Workspace.Browser
+import Workspace.I18n
 import Workspace.Site
 import Workspace.Types as Types exposing (Table)
 
@@ -146,6 +147,8 @@ config =
     , elementsOf = noteElements
     , toTable = noteTable
     , onImport = Just noteImport
+    , t = Workspace.I18n.en
+    , templates = []
     }
 
 
