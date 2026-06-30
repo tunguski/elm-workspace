@@ -7,7 +7,7 @@ name: Build, test & deploy to GitHub Pages
 # The library targets the elm-lang compiler (github.com/tunguski/elm-lang), which lives in a
 # separate repo, so the build checks that out, packages it into a runnable elm.jar, runs the
 # tests, then `elm make` to produce the page. Like the other elm-lang example apps it compiles
-# with --no-check. The deploy is gated on the tests passing.
+# and compiles. The deploy is gated on the tests passing.
 
 on:
   push:
@@ -73,7 +73,7 @@ jobs:
       - name: Compile the demo to public/index.html
         run: |
           java -jar elm-lang/target/elm.jar make \
-            src/Main.elm --project=elm.json -o public/index.html --no-check
+            src/Main.elm --project=elm.json -o public/index.html
           TITLE=elm-workspace SITECSS=assets/site.css CSSFILE=src/workspace.css perl -0777 -pi -e '
             s#<meta charset="utf-8">#<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">#;
             s#<title>.*?</title>#"<title>".$ENV{TITLE}."</title>"#e;
