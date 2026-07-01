@@ -59,7 +59,8 @@ jobs:
             test/WorkspaceTest.elm \
             src/Workspace/Types.elm src/Workspace/Permissions.elm \
             src/Workspace/Comment.elm src/Workspace/Db.elm \
-            src/Workspace/Table.elm src/Workspace/Serialize.elm > report.json
+            src/Workspace/Table.elm src/Workspace/Serialize.elm \
+            src/Workspace/Refs.elm > report.json
           code=$?
           set -e
           perl tools/gen-test-report.pl report.json public/tests.html

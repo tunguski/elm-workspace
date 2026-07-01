@@ -3,7 +3,7 @@ module WorkspaceTest exposing (suite)
 {-| Headless tests for the pure core of elm-workspace: permissions, comment threading, the SQL
 query builder, the Table CSV/JSON codecs and JSON serialisation round-trips. -}
 
-import Dict
+import Dict exposing (Dict)
 import Expect
 import Json.Decode as D
 import Json.Encode as E
@@ -11,9 +11,10 @@ import Test exposing (Test, describe, test)
 import Workspace.Comment as Comment
 import Workspace.Db as Db
 import Workspace.Permissions as Permissions
+import Workspace.Refs as Refs
 import Workspace.Serialize as Serialize
 import Workspace.Table as Table
-import Workspace.Types as Types exposing (Principal(..), Visibility(..))
+import Workspace.Types as Types exposing (DocRef, Id, Principal(..), Selector(..), Stored, Visibility(..))
 
 
 me : { user : String, groups : List String }
@@ -34,6 +35,7 @@ suite =
         , db
         , tables
         , serialize
+        , refs
         ]
 
 
@@ -250,4 +252,185 @@ serialize =
             \_ -> Expect.equal (Ok stored) roundTripStored
         , test "the index round-trips" <|
             \_ -> Expect.equal (Ok [ meta ]) roundTripIndex
+        , test "references round-trip (all three selector shapes)" <|
+            \_ ->
+                let
+                    rs =
+                        [ { binding = "all", docId = "a", selector = WholeDoc }
+                        , { binding = "orders", docId = "b", selector = Step "s7" }
+                        , { binding = "grid", docId = "c", selector = RangeSel "A1:C10" }
+                        ]
+                in
+                E.encode 0 (Serialize.encodeRefs rs)
+                    |> D.decodeString Serialize.refsDecoder
+                    |> Expect.equal (Ok rs)
         ]
+
+
+
+-- REFS -----------------------------------------------------------------------
+
+
+{-| A trivial document for exercising the reference engine: some outgoing references, a literal
+value, and a record of the bindings that were absorbed into it (so a test can see resolution ran). -}
+type alias RDoc =
+    { refs : List DocRef
+    , value : String
+    , seen : List String
+    }
+
+
+rdoc : Id -> List DocRef -> String -> ( Id, Stored RDoc )
+rdoc id rs v =
+    ( id
+    , { meta = Types.newMeta id "" "r" "me"
+      , doc = { refs = rs, value = v, seen = [] }
+      , comments = Dict.empty
+      }
+    )
+
+
+{-| A resolver whose `provide` returns the document's value as a 1×1 table, whose `absorb` records
+which bindings arrived (and folds their single cell into `seen`), and whose `activate` is a no-op. -}
+rResolver : Refs.Resolver RDoc
+rResolver =
+    { references = .refs
+    , provide =
+        \selector doc ->
+            case selector of
+                WholeDoc ->
+                    Ok { headers = [ "v" ], rows = [ [ doc.value ] ] }
+
+                _ ->
+                    Err "only WholeDoc is supported"
+    , absorb =
+        \tables doc ->
+            { doc
+                | seen =
+                    Dict.toList tables
+                        |> List.map (\( b, t ) -> b ++ "=" ++ (List.concat t.rows |> String.join "/"))
+            }
+    , activate = identity
+    }
+
+
+ref : String -> Id -> DocRef
+ref binding docId =
+    { binding = binding, docId = docId, selector = WholeDoc }
+
+
+refs : Test
+refs =
+    let
+        -- A → B → C, plus A → C directly. Acyclic.
+        cache =
+            Dict.fromList
+                [ rdoc "A" [ ref "fromB" "B", ref "fromC" "C" ] "a"
+                , rdoc "B" [ ref "fromC" "C" ] "b"
+                , rdoc "C" [] "c"
+                ]
+
+        edges id =
+            Dict.get id cache
+                |> Maybe.map (\s -> List.map .docId s.doc.refs)
+                |> Maybe.withDefault []
+    in
+    describe "Refs"
+        [ test "topoOrder puts dependencies before dependents" <|
+            \_ ->
+                case Refs.topoOrder edges [ "A" ] of
+                    Ok order ->
+                        -- C before B before A
+                        Expect.equal True (indexOf "C" order < indexOf "B" order && indexOf "B" order < indexOf "A" order)
+
+                    Err _ ->
+                        Expect.fail "expected an acyclic order"
+        , test "cycleFrom finds no cycle in an acyclic graph" <|
+            \_ -> Expect.equal Nothing (Refs.cycleFrom edges "A")
+        , test "a self-reference is a cycle" <|
+            \_ ->
+                let
+                    selfEdges id =
+                        if id == "X" then
+                            [ "X" ]
+
+                        else
+                            []
+                in
+                Expect.notEqual Nothing (Refs.cycleFrom selfEdges "X")
+        , test "topoOrder reports a cycle as Err" <|
+            \_ ->
+                let
+                    cyc id =
+                        case id of
+                            "P" ->
+                                [ "Q" ]
+
+                            "Q" ->
+                                [ "P" ]
+
+                            _ ->
+                                []
+                in
+                case Refs.topoOrder cyc [ "P" ] of
+                    Err _ ->
+                        Expect.pass
+
+                    Ok _ ->
+                        Expect.fail "expected a cycle error"
+        , test "resolve threads a dependency's value into the dependent's bindings" <|
+            \_ ->
+                case Refs.resolve rResolver "A" cache of
+                    Ok res ->
+                        Dict.get "A" res.docs
+                            |> Maybe.map (\s -> List.sort s.doc.seen)
+                            |> Expect.equal (Just [ "fromB=b", "fromC=c" ])
+
+                    Err _ ->
+                        Expect.fail "expected resolution to succeed"
+        , test "resolve of a cyclic closure fails with Cycle" <|
+            \_ ->
+                let
+                    cyclic =
+                        Dict.fromList
+                            [ rdoc "P" [ ref "q" "Q" ] "p"
+                            , rdoc "Q" [ ref "p" "P" ] "q"
+                            ]
+                in
+                case Refs.resolve rResolver "P" cyclic of
+                    Err (Refs.Cycle _) ->
+                        Expect.pass
+
+                    Ok _ ->
+                        Expect.fail "expected a cycle error"
+        , test "a reference to a missing document is a warning, not a failure" <|
+            \_ ->
+                let
+                    dangling =
+                        Dict.fromList [ rdoc "A" [ ref "gone" "ZZZ" ] "a" ]
+                in
+                case Refs.resolve rResolver "A" dangling of
+                    Ok res ->
+                        Expect.equal 1 (List.length res.warnings)
+
+                    Err _ ->
+                        Expect.fail "a dangling reference should not block resolution"
+        ]
+
+
+indexOf : a -> List a -> Int
+indexOf x xs =
+    let
+        go i list =
+            case list of
+                [] ->
+                    -1
+
+                y :: rest ->
+                    if y == x then
+                        i
+
+                    else
+                        go (i + 1) rest
+    in
+    go 0 xs
