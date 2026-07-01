@@ -281,9 +281,10 @@ gather r resolved ref ( tables, warnings ) =
             ( tables, warnings ++ [ "referenced document " ++ ref.docId ++ " is not available" ] )
 
 
-{-| A human sentence describing a [`RefError`](#RefError) for the cycle banner. -}
+{-| A human sentence describing a [`RefError`](#RefError) for the cycle banner. The cycle list
+already closes the loop (its first and last id are the same), so it reads directly as `A → B → A`. -}
 refErrorLabel : RefError -> String
 refErrorLabel err =
     case err of
         Cycle ids ->
-            "Reference cycle: " ++ String.join " → " (ids ++ List.take 1 ids)
+            "Reference cycle: " ++ String.join " → " ids
