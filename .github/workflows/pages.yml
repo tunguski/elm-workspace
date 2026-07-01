@@ -60,7 +60,7 @@ jobs:
             src/Workspace/Types.elm src/Workspace/Permissions.elm \
             src/Workspace/Comment.elm src/Workspace/Db.elm \
             src/Workspace/Table.elm src/Workspace/Serialize.elm \
-            src/Workspace/Refs.elm > report.json
+            src/Workspace/Refs.elm src/Workspace/Sql.elm > report.json
           code=$?
           set -e
           perl tools/gen-test-report.pl report.json public/tests.html

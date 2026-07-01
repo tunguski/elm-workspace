@@ -149,6 +149,10 @@ config =
     , onImport = Just noteImport
     , t = Workspace.I18n.en
     , templates = []
+    , references = \_ -> []
+    , provide = \_ _ -> Err "a note has no referenceable data"
+    , absorb = \_ doc -> doc
+    , docSql = \_ -> Nothing
     }
 
 

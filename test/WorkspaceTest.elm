@@ -13,6 +13,7 @@ import Workspace.Db as Db
 import Workspace.Permissions as Permissions
 import Workspace.Refs as Refs
 import Workspace.Serialize as Serialize
+import Workspace.Sql as Sql
 import Workspace.Table as Table
 import Workspace.Types as Types exposing (DocRef, Id, Principal(..), Selector(..), Stored, Visibility(..))
 
@@ -36,6 +37,7 @@ suite =
         , tables
         , serialize
         , refs
+        , sqlDoc
         ]
 
 
@@ -415,6 +417,48 @@ refs =
 
                     Err _ ->
                         Expect.fail "a dangling reference should not block resolution"
+        ]
+
+
+-- SQL DOCUMENT ---------------------------------------------------------------
+
+
+sqlDoc : Test
+sqlDoc =
+    let
+        big =
+            { headers = [ "n" ], rows = List.map (\i -> [ String.fromInt i ]) (List.range 1 250) }
+
+        run =
+            Sql.setResult big Sql.empty
+    in
+    describe "Sql document"
+        [ test "provide before a run reports the query has not run" <|
+            \_ ->
+                case Sql.provide WholeDoc Sql.empty of
+                    Err _ ->
+                        Expect.pass
+
+                    Ok _ ->
+                        Expect.fail "an un-run query should not provide a result"
+        , test "setResult caps the preview at previewLimit rows" <|
+            \_ -> Expect.equal Sql.previewLimit (List.length (Maybe.withDefault [] (Maybe.map .rows run.cached)))
+        , test "setResult remembers the full total" <|
+            \_ -> Expect.equal 250 run.total
+        , test "provide after a run yields the capped table" <|
+            \_ ->
+                case Sql.provide WholeDoc run of
+                    Ok t ->
+                        Expect.equal Sql.previewLimit (List.length t.rows)
+
+                    Err _ ->
+                        Expect.fail "a run query should provide its cached result"
+        , test "a run document round-trips through JSON (result cache preserved)" <|
+            \_ ->
+                E.encode 0 (Sql.encode run)
+                    |> D.decodeString Sql.decoder
+                    |> Result.map (\d -> ( d.total, Maybe.map (.rows >> List.length) d.cached ))
+                    |> Expect.equal (Ok ( 250, Just Sql.previewLimit ))
         ]
 
 

@@ -35,3 +35,112 @@
     outline: none;
     border-color: var(--ws-accent);
 }
+
+/* ---- cross-document references ---------------------------------------------
+   The banner the shell shows above a document when its references form a cycle
+   (a hard stop) or produced warnings (a soft note); plus the reusable SQL-query
+   document's editor and result preview. */
+
+.ws-ref-error {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px;
+    margin: 0 0 14px;
+    padding: 10px 14px;
+    border: 1px solid #f0b8b1;
+    border-left: 4px solid #d13c2e;
+    border-radius: 8px;
+    background: #fdece9;
+    color: #8f2318;
+    font-size: 14px;
+}
+
+.ws-ref-error .bi {
+    color: #d13c2e;
+}
+
+.ws-ref-error-msg {
+    font-weight: 600;
+}
+
+.ws-ref-error-hint {
+    color: #a2564d;
+}
+
+.ws-ref-warn {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px 14px;
+    margin: 0 0 14px;
+    padding: 8px 14px;
+    border: 1px solid #cfe0f5;
+    border-left: 4px solid #5b6ef5;
+    border-radius: 8px;
+    background: #f2f6fe;
+    color: #35507e;
+    font-size: 13px;
+}
+
+.ws-ref-warn .bi {
+    color: #5b6ef5;
+}
+
+/* SQL-query document */
+.sql-doc {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.sql-editor {
+    width: 100%;
+    border: 1px solid var(--ws-border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font: 13px/1.6 ui-monospace, Menlo, Consolas, monospace;
+    color: #1f2733;
+    background: #fbfcfe;
+    resize: vertical;
+}
+
+.sql-editor:focus {
+    outline: none;
+    border-color: var(--ws-accent);
+}
+
+.sql-hint {
+    color: #61708a;
+    font-size: 13px;
+    margin: 0;
+}
+
+.sql-caption {
+    margin: 0 0 6px;
+    color: #61708a;
+    font-size: 12px;
+}
+
+.sql-result {
+    overflow-x: auto;
+}
+
+.sql-table {
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.sql-table th,
+.sql-table td {
+    border: 1px solid #e2e8f2;
+    padding: 4px 10px;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.sql-table thead th {
+    background: #eef0fe;
+    position: sticky;
+    top: 0;
+}

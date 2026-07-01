@@ -19,4 +19,4 @@ $ELM test "$P/test/WorkspaceTest.elm" \
   "$P/src/Workspace/Types.elm" "$P/src/Workspace/Permissions.elm" \
   "$P/src/Workspace/Comment.elm" "$P/src/Workspace/Db.elm" \
   "$P/src/Workspace/Table.elm" "$P/src/Workspace/Serialize.elm" \
-  "$P/src/Workspace/Refs.elm"
+  "$P/src/Workspace/Refs.elm" "$P/src/Workspace/Sql.elm"
